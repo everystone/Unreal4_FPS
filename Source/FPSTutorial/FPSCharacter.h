@@ -37,9 +37,23 @@ public:
 	UFUNCTION()
 		void OnStopJump();
 
-	//Function to handle firing the projectile
-	UFUNCTION()
-		void OnFire();
+		
+		void OnFire(); // Fire projectile event
+		void Fire_Projectile(FVector MuzzleLocation, FRotator MuzzleRotation); //Visually fires ( spawn projectile )
+
+	//Tell Server That we wish to fire
+	UFUNCTION(reliable, Server, WithValidation) //RPC That will be called on client, but executed on Server
+		void Server_OnFire(FVector MuzzleLocation, FRotator MuzzleRotation);
+	virtual void Server_OnFire_Implementation(FVector MuzzleLocation, FRotator MuzzleRotation);
+	virtual bool Server_OnFire_Validate(FVector MuzzleLocation, FRotator MuzzleRotation);
+
+	//Calls Fire_Projectile on all clients. 
+	UFUNCTION(reliable, NetMultiCast, WithValidation) //RPC That will be called on Server, but executed on Client
+		void Client_OnFire(FVector MuzzleLocation, FRotator MuzzleRotation);
+	virtual void Client_OnFire_Implementation(FVector MuzzleLocation, FRotator MuzzleRotation);
+	virtual bool Client_OnFire_Validate(FVector MuzzleLocation, FRotator MuzzleRotation);
+
+
 
 	// First person Camera, public property
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
@@ -51,6 +65,11 @@ public:
 	/** Pawn mesh: 1st person view ( arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 		USkeletalMeshComponent* FirstPersonMesh;
+
+	/* Weapon Mesh */
+	//UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	//	UStaticMeshComponent* WeaponMesh;
+
 	//Gun's muzzle's offset from the camera location
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 		FVector MuzzleOffset;

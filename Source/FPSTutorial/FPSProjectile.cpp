@@ -53,6 +53,7 @@ void AFPSProjectile::InitVelocity(const FVector& ShootDirection){
 	if (ProjectileMovement){
 		//Set the projectile's velocity to the desired direction
 		ProjectileMovement->Velocity = ShootDirection * ProjectileMovement->InitialSpeed;
+		UE_LOG(LogTemp, Warning, TEXT("Velocity OK"));
 	}
 }
 
@@ -61,6 +62,7 @@ void AFPSProjectile::OnHit(AActor* OtherActor, UPrimitiveComponent* OtherComp, F
 	if (OtherActor && (OtherActor != this) && OtherComp){
 		
 		//Adds a physics impulse to Whatever the projectile hits
+		if (OtherComp->Mobility > 0 && OtherComp->IsSimulatingPhysics())
 		OtherComp->AddImpulseAtLocation(ProjectileMovement->Velocity * 100.0f, Hit.ImpactPoint);
 	}
 }
