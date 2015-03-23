@@ -10,7 +10,7 @@ class FPSTUTORIAL_API AFPSCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-public:
+protected:
 	// Sets default values for this character's properties
 	AFPSCharacter();
 
@@ -23,6 +23,22 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
 	
+	/** Get actor derived from UsableActor currently looked at by the player */
+	class AUsableActor* GetUsableInView();
+
+	/* Max distance to use/focus on actors. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
+		float MaxUseDistance;
+
+	/* True only in first frame when focused on new usable actor. */
+	bool bHasNewFocus;
+
+	/* Actor derived from UsableActor currently in center-view. */
+	AUsableActor* FocusedUsableActor;
+
+public:
+
+
 	//Handles moving forward / backward
 	UFUNCTION()
 		void MoveForward(float Val);
@@ -76,4 +92,12 @@ public:
 	//Projectile class to spawn
 	UPROPERTY(EditDefaultsOnly, Category = Projectile)
 		TSubclassOf<class AFPSProjectile> ProjectileClass;
+
+	/** Use the actor currently in view (if derived from UsableActor */
+	UFUNCTION(BlueprintCallable, WithValidation, Server, Reliable, Category = PlayerAbility)
+		virtual void Use();
+	
+	virtual void Use_Implementation();
+	virtual bool Use_Validate();
+
 };

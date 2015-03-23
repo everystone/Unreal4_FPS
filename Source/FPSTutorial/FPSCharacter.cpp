@@ -3,6 +3,7 @@
 #include "FPSTutorial.h"
 #include "FPSCharacter.h"
 #include "FPSProjectile.h"
+#include "UsableActor.h"
 
 // Sets default values
 AFPSCharacter::AFPSCharacter()
@@ -17,7 +18,7 @@ void AFPSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	if (GEngine){
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("FPSCharacter!"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("FPSCharacter!"));
 	}
 	
 }
@@ -45,12 +46,91 @@ AFPSCharacter::AFPSCharacter(const FObjectInitializer& ObjectInitializer)
 	// everyone but the owner can see the regular body mesh
 	Mesh->SetOwnerNoSee(true);
 
+	//Usable stuff
+	MaxUseDistance = 800;
+	bHasNewFocus = true;
+
 }
 
+/* Perform raytrace to find closest looked-at UsableActor*/
+AUsableActor* AFPSCharacter::GetUsableInView(){
+	FVector camLoc;
+	FRotator camRot;
+
+	if (Controller == NULL)
+		return NULL;
+
+	Controller->GetPlayerViewPoint(camLoc, camRot);
+	const FVector start_trace = camLoc;
+	const FVector direction = camRot.Vector();
+	const FVector end_trace = start_trace + (direction * MaxUseDistance);
+
+	FCollisionQueryParams TraceParams(FName(TEXT("")), true, this);
+	TraceParams.bTraceAsyncScene = true;
+	TraceParams.bReturnPhysicalMaterial = false;
+	TraceParams.bTraceComplex = true;
+
+	FHitResult Hit(ForceInit);
+	GetWorld()->LineTraceSingle(Hit, start_trace, end_trace, COLLISION_PROJECTILE, TraceParams);
+
+	return Cast<AUsableActor>(Hit.GetActor());
+}
+
+
+	/*
+	Runs on Server. Perform "OnUsed" on currently viewed UsableActor if implemented.
+	*/
+	void AFPSCharacter::Use_Implementation()
+	{
+		AUsableActor* usable = GetUsableInView();
+		if (usable)
+		{
+			usable->OnUsed(this);
+		}
+	}
+
+	bool AFPSCharacter::Use_Validate()
+	{
+		// No special server-side validation performed.
+		return true;
+	}
+
+
 // Called every frame
-void AFPSCharacter::Tick( float DeltaTime )
+void AFPSCharacter::Tick( float DeltaSeconds )
 {
-	Super::Tick( DeltaTime );
+	Super::Tick( DeltaSeconds );
+	//Super::Tick(DeltaSeconds);
+
+	// Update actor currently being looked at by player
+	if (Controller && Controller->IsLocalController())
+	{
+		AUsableActor* usable = GetUsableInView();
+
+		// End Focus
+		if (FocusedUsableActor != usable)
+		{
+			if (FocusedUsableActor)
+			{
+				FocusedUsableActor->EndFocusItem();
+			}
+
+			bHasNewFocus = true;
+		}
+
+		// Assign new Focus
+		FocusedUsableActor = usable;
+
+		// Start Focus.
+		if (usable)
+		{
+			if (bHasNewFocus)
+			{
+				usable->StartFocusItem();
+				bHasNewFocus = false;
+			}
+		}
+	}
 
 }
 
@@ -73,6 +153,9 @@ void AFPSCharacter::SetupPlayerInputComponent(class UInputComponent* InputCompon
 
 	//Shooting
 	InputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::OnFire);
+
+	//Use
+	InputComponent->BindAction("Use", IE_Pressed, this, &AFPSCharacter::Use);
 }
 
 void AFPSCharacter::MoveForward(float Value)
